@@ -32,15 +32,15 @@ pdfForm.addEventListener('submit', async (e) => {
       const textContent = await page.getTextContent();
       const text = textContent.items.map((item) => item.str).join(' ');
 
-      const nome = extractNome(text);
-      const endereco = extractEndereco(text);
+    
+      const nome = extractNome(text) || 'Não encontrado';
+      const endereco = extractEndereco(text) || 'Não encontrado';
 
-      if (nome && endereco) {
-        extractedData.push({ page: i, nome, endereco });
-      }
+      
+      extractedData.push({ page: i, nome, endereco });
 
       const paragraph = document.createElement('p');
-      paragraph.textContent = `Página ${i}: ${nome ? nome : 'Nome não encontrado'}, ${endereco ? endereco : 'Endereço não encontrado'}`;
+      paragraph.textContent = `Página ${i}: Nome: ${nome}, Endereço: ${endereco}`;
       output.appendChild(paragraph);
     }
 
@@ -52,6 +52,7 @@ pdfForm.addEventListener('submit', async (e) => {
 });
 
 function extractNome(text) {
+
   const matchAoSr = text.match(/AO SR\(A\)\.?\s+([A-Z\s]+),/);
   if (matchAoSr) {
     return matchAoSr[1].trim();
@@ -62,7 +63,7 @@ function extractNome(text) {
 }
 
 function extractEndereco(text) {
-  const match = text.match(/(?:RUA|AVENIDA|TRAVESSA|ESTRADA).*?CEP: \d{2}\.\d{3}-\d{3}/i); // Identifica padrões de endereço
+  const match = text.match(/(?:RUA|AVENIDA|TRAVESSA|ESTRADA).*?CEP: \d{2}\.\d{3}-\d{3}/i);
   return match ? match[0].trim() : null;
 }
 
@@ -72,7 +73,13 @@ downloadXlsx.addEventListener('click', () => {
     return;
   }
 
-  const worksheet = XLSX.utils.json_to_sheet(extractedData);
+  const formattedData = extractedData.map((entry) => ({
+    Página: entry.page,
+    Nome: entry.nome,
+    Endereço: entry.endereco,
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(formattedData);
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, worksheet, 'Dados Extraídos');
 
