@@ -32,15 +32,16 @@ pdfForm.addEventListener('submit', async (e) => {
       const textContent = await page.getTextContent();
       const text = textContent.items.map((item) => item.str).join(' ');
 
-    
+      console.log(text);
+
       const nome = extractNome(text) || 'Não encontrado';
       const endereco = extractEndereco(text) || 'Não encontrado';
+      const valor = extractValor(text) || 'Não encontrado';
 
-      
-      extractedData.push({ page: i, nome, endereco });
+      extractedData.push({ page: i, nome, endereco, valor });
 
       const paragraph = document.createElement('p');
-      paragraph.textContent = `Página ${i}: Nome: ${nome}, Endereço: ${endereco}`;
+      paragraph.textContent = `Página ${i}: Nome: ${nome}, Endereço: ${endereco}, Valor: ${valor}`;
       output.appendChild(paragraph);
     }
 
@@ -52,7 +53,6 @@ pdfForm.addEventListener('submit', async (e) => {
 });
 
 function extractNome(text) {
-
   const matchAoSr = text.match(/AO SR\(A\)\.?\s+([A-Z\s]+),/);
   if (matchAoSr) {
     return matchAoSr[1].trim();
@@ -66,6 +66,10 @@ function extractEndereco(text) {
   const match = text.match(/(?:RUA|AVENIDA|TRAVESSA|ESTRADA).*?CEP: \d{2}\.\d{3}-\d{3}/i);
   return match ? match[0].trim() : null;
 }
+function extractValor(text) {
+  const match = text.match(/Totais:.*?(\d{1,3}(?:\.\d{3})*,\d{2})(?!.*\d{1,3}(?:\.\d{3})*,\d{2})/);
+  return match ? match[1].trim() : null;
+}
 
 downloadXlsx.addEventListener('click', () => {
   if (extractedData.length === 0) {
@@ -77,6 +81,7 @@ downloadXlsx.addEventListener('click', () => {
     Página: entry.page,
     Nome: entry.nome,
     Endereço: entry.endereco,
+    Valor: entry.valor,
   }));
 
   const worksheet = XLSX.utils.json_to_sheet(formattedData);
