@@ -15,16 +15,23 @@
       <h1 class="text-center mb-4">Leitor de PDF</h1>
       <div class="card p-4">
         <form id="pdfForm" class="mb-4">
-          <label for="pdfFile" class="form-label"
-            >Escolha um arquivo PDF:</label
-          >
-          <input
-            type="file"
-            id="pdfFile"
-            class="form-control"
-            accept="application/pdf"
-            required
-          />
+          <div class="mb-3">
+            <label for="modelSelect" class="form-label">Escolha o modelo:</label>
+            <select id="modelSelect" class="form-select" required>
+              <option value="uruburetama">Uruburetama</option>
+              <option value="parintins">Parintins</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label for="pdfFile" class="form-label">Escolha um arquivo PDF:</label>
+            <input
+              type="file"
+              id="pdfFile"
+              class="form-control"
+              accept="application/pdf"
+              required
+            />
+          </div>
           <button type="submit" class="btn btn-primary mt-3">Ler PDF</button>
         </form>
         <div id="loading" class="alert alert-info d-none">Lendo o PDF...</div>

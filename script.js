@@ -1,58 +1,106 @@
-const pdfForm = document.getElementById('pdfForm');
-const pdfFile = document.getElementById('pdfFile');
-const output = document.getElementById('output');
-const loading = document.getElementById('loading');
-const downloadXlsx = document.getElementById('downloadXlsx');
+const pdfForm = document.getElementById("pdfForm");
+const pdfFile = document.getElementById("pdfFile");
+const loading = document.getElementById("loading");
+const output = document.getElementById("output");
+const downloadXlsx = document.getElementById("downloadXlsx");
+const modelSelect = document.getElementById('modelSelect');
+let extractedData = [];
 
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.9.179/build/pdf.worker.min.js';
+pdfForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  output.innerHTML = "";
+  loading.classList.remove("d-none");
 
-let extractedData = []; 
+  const selectedMunicipio = modelSelect.value;
 
-pdfForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
   const file = pdfFile.files[0];
-
   if (!file) {
-    alert('Por favor, selecione um arquivo PDF.');
+    alert("Por favor, selecione um arquivo PDF.");
     return;
   }
 
-  output.innerHTML = '';
-  extractedData = [];
-  loading.classList.remove('d-none');
-  downloadXlsx.classList.add('d-none');
-
   const fileReader = new FileReader();
-  fileReader.onload = async function () {
-    const typedArray = new Uint8Array(this.result);
+  fileReader.onload = async (e) => {
+    const typedArray = new Uint8Array(e.target.result);
     const pdf = await pdfjsLib.getDocument(typedArray).promise;
+
+    extractedData = [];
 
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
-      const text = textContent.items.map((item) => item.str).join(' ');
+      const text = textContent.items.map((item) => item.str).join(" ");
 
-      console.log(text);
+      const municipio = detectMunicipio(text, selectedMunicipio);
 
-      const nome = extractNome(text) || 'Não encontrado';
-      const endereco = extractEndereco(text) || 'Não encontrado';
-      const valor = extractValor(text) || 'Não encontrado';
+      let nome, endereco, valor;
 
-      extractedData.push({ page: i, nome, endereco, valor });
+      if (municipio === "Parintins") {
+        nome = extractNomeParintins(text) || "Não encontrado";
+        endereco = extractEnderecoParintins(text) || "Não encontrado";
+        valor = extractValorParintins(text) || "Não encontrado";
+      } else if (municipio === "Uruburetama") {
+        nome = extractNomeUruburetama(text) || "Não encontrado";
+        endereco = extractEnderecoUruburetama(text) || "Não encontrado";
+        valor = extractValorUruburetama(text) || "Não encontrado";
+      } else {
+        nome = "Não identificado";
+        endereco = "Não identificado";
+        valor = "Não identificado";
+      }
 
-      const paragraph = document.createElement('p');
-      paragraph.textContent = `Página ${i}: Nome: ${nome}, Endereço: ${endereco}, Valor: ${valor}`;
+      extractedData.push({ page: i, municipio, nome, endereco, valor });
+
+      const paragraph = document.createElement("p");
+      paragraph.textContent = `Página ${i} (${municipio}): Nome: ${nome}, Endereço: ${endereco}, Valor: ${valor}`;
       output.appendChild(paragraph);
     }
 
-    loading.classList.add('d-none');
-    downloadXlsx.classList.remove('d-none');
+    loading.classList.add("d-none");
+    downloadXlsx.classList.remove("d-none");
   };
 
   fileReader.readAsArrayBuffer(file);
 });
 
-function extractNome(text) {
+downloadXlsx.addEventListener("click", () => {
+  const ws = XLSX.utils.json_to_sheet(extractedData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Dados Extraídos");
+  XLSX.writeFile(wb, "dados_extraidos.xlsx");
+});
+
+function detectMunicipio(text, selectedMunicipio) {
+  if (selectedMunicipio === "uruburetama" || text.includes("Prefeitura Municipal de Uruburetama")) {
+    return "Uruburetama";
+  }
+  if (selectedMunicipio === "parintins" || text.includes("Prefeitura Municipal de Parintins")) {
+    return "Parintins";
+  }
+  return "Desconhecido";
+}
+
+function extractNomeParintins(text) {
+  const match = text.match(/Compl:\s+\d{3}\.\d{3}\.\d{3}-\d{2}\s+([A-Za-zÀ-ÿ\s]+)\s+DEMONSTRATIVO DA/);
+  return match ? match[1].trim() : null;
+}
+
+function extractEnderecoParintins(text) {
+  const match = text.match(/Endereço:\s+(.*?)\s+Número:\s+(.*?)(?:\s+|$)/);
+  if (match) {
+    const rua = match[1].trim();
+    const numero = match[2].trim();
+    return `${rua}, Número: ${numero}`;
+  }
+  return null;
+}
+
+function extractValorParintins(text) {
+  const match = text.match(/(?:\d{1,3}(?:\.\d{3})*,\d{2})\s+Parintins,.*?(\d{1,3}(?:\.\d{3})*,\d{2})$/);
+  return match ? match[1].trim() : null;
+}
+
+function extractNomeUruburetama(text) {
   const matchAoSr = text.match(/AO SR\(A\)\.?\s+([A-Z\s]+),/);
   if (matchAoSr) {
     return matchAoSr[1].trim();
@@ -62,31 +110,12 @@ function extractNome(text) {
   return matchGeneric ? matchGeneric[0].replace(',', '').trim() : null;
 }
 
-function extractEndereco(text) {
+function extractEnderecoUruburetama(text) {
   const match = text.match(/(?:RUA|AVENIDA|TRAVESSA|ESTRADA).*?CEP: \d{2}\.\d{3}-\d{3}/i);
   return match ? match[0].trim() : null;
 }
-function extractValor(text) {
+
+function extractValorUruburetama(text) {
   const match = text.match(/Totais:.*?(\d{1,3}(?:\.\d{3})*,\d{2})(?!.*\d{1,3}(?:\.\d{3})*,\d{2})/);
   return match ? match[1].trim() : null;
 }
-
-downloadXlsx.addEventListener('click', () => {
-  if (extractedData.length === 0) {
-    alert('Nenhum dado encontrado para exportar.');
-    return;
-  }
-
-  const formattedData = extractedData.map((entry) => ({
-    Página: entry.page,
-    Nome: entry.nome,
-    Endereço: entry.endereco,
-    Valor: entry.valor,
-  }));
-
-  const worksheet = XLSX.utils.json_to_sheet(formattedData);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'Dados Extraídos');
-
-  XLSX.writeFile(workbook, 'dados_extraidos.xlsx');
-});
