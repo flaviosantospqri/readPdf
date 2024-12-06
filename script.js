@@ -43,6 +43,10 @@ pdfForm.addEventListener("submit", async (event) => {
         nome = extractNomeUruburetama(text) || "Não encontrado";
         endereco = extractEnderecoUruburetama(text) || "Não encontrado";
         valor = extractValorUruburetama(text) || "Não encontrado";
+      } else if (municipio === "Croatá") {
+        nome = extractNomeCroata(text) || "Não encontrado";
+        endereco = extractEnderecoCroata(text) || "Não encontrado";
+        valor = extractValorCroata(text) || "Não encontrado";
       } else {
         nome = "Não identificado";
         endereco = "Não identificado";
@@ -76,6 +80,9 @@ function detectMunicipio(text, selectedMunicipio) {
   }
   if (selectedMunicipio === "parintins" || text.includes("Prefeitura Municipal de Parintins")) {
     return "Parintins";
+  }
+  if (selectedMunicipio === "croatá" || text.includes("Prefeitura Municipal de Croatá")) {
+    return "Croatá";
   }
   return "Desconhecido";
 }
@@ -118,4 +125,26 @@ function extractEnderecoUruburetama(text) {
 function extractValorUruburetama(text) {
   const match = text.match(/Totais:.*?(\d{1,3}(?:\.\d{3})*,\d{2})(?!.*\d{1,3}(?:\.\d{3})*,\d{2})/);
   return match ? match[1].trim() : null;
+}
+
+function extractNomeCroata(text) {
+  const match = text.match(/IDENTIFICAÇÃO DO CONTRIBUINTE\s+NOME:\s+([A-Za-zÀ-ÿ\s]+)/);
+  return match ? match[1].trim() : null;
+}
+
+function extractEnderecoCroata(text) {
+  const match = text.match(/ENDEREÇO:\s+([A-Za-zÀ-ÿ0-9\s,-]+)/);
+  return match ? match[1].trim() : null;
+}
+
+function extractValorCroata(text) {
+  const regex = /ATIVA \(R\$\)\s+(?:[\d.,]+\s+){5}([\d.,]+)/; 
+  const match = text.match(regex);
+
+  if (match) {
+    const valor = match[1].replace(/\./g, '').replace(',', '.').trim(); 
+    return parseFloat(valor);
+  }
+
+  return null;
 }
